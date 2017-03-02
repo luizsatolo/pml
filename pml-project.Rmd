@@ -1,0 +1,54 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "luizsatolo"
+date: "25 de fevereiro de 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Summary
+The goal of this project is to predict the manner in which 6 participants did an exercise, represented by the variable "classe".
+
+## Exploratory data analysis
+The original training data set has 160 variables and 19622 observations. But there's an important amount of missing values. Instead of using any technique imputing values, as it would introduce more error in the predictions, the strategy adopted was to ommit the missing values.
+```{r}
+library(caret)
+library(ggplot2)
+trainData<-read.csv("pml-training.csv")
+testData<-read.csv("pml-testing.csv")
+trainData<-na.omit(trainData)
+dim(trainData)
+```
+After ommiting observations with missing values, there're 460 observations left in the training data set.
+
+## Cross validation
+The method used for cross validation was "leave one out" (LOOCV), passed as an argument to the trainControl function.
+```{r,cache=TRUE,results='hide'}
+set.seed(1283)
+crossValidation <- trainControl(method="LOOCV")
+```
+
+## Model
+Although there're 160 variables to be chosen, many of them presented no variation among the participants and, therefore, couldn't be used to fit the model. The model with the variables selected for prediction is:
+```{r,cache=TRUE,results='hide'}
+set.seed(1283)
+model1<-train(classe~roll_belt+pitch_belt+yaw_belt+gyros_belt_x+gyros_belt_y+gyros_belt_z+accel_belt_x+accel_belt_y+accel_belt_z+magnet_belt_x+magnet_belt_y+magnet_belt_z+roll_arm+pitch_arm+yaw_arm+gyros_arm_x+gyros_arm_y+gyros_arm_z+accel_arm_x+accel_arm_y+accel_arm_z+magnet_arm_x+magnet_arm_y+magnet_arm_z+roll_dumbbell+pitch_dumbbell+yaw_dumbbell+gyros_dumbbell_x+gyros_dumbbell_y+gyros_dumbbell_z+accel_dumbbell_x+accel_dumbbell_y+accel_dumbbell_z+magnet_dumbbell_x+magnet_dumbbell_y+magnet_dumbbell_z+roll_forearm+pitch_forearm+yaw_forearm,method="rf",data=trainData,trControl=crossValidation,prox=TRUE)
+```
+The method used to train the model was random forest, and the accuracy was 78%.
+
+
+## Out of sample error
+As the values of the variable classe weren't available for the testing data set, the out of sample error couldn't be estimated, but it's expected to be higher (and hopefully close) to the inside of sample error. 
+```{r}
+trainData$predRight<-model1$finalModel$predicted==trainData$classe
+qplot(classe, fill=predRight, data=trainData, main="Inside of sample prediction")
+confusionMatrix(model1$finalModel$predicted,trainData$classe)
+```
+As the accuracy of the inside of sample estimation is 78%, its expected error is of 22%. Then, the out of sample error is expected to be larger than 22%. 
+The out of sample prediction using the testing set is given by:
+```{r, results='hide'}
+predict(model1,newdata=testData)
+```
